@@ -57,7 +57,7 @@ jobs:
   # --- Step 3: Build, Verify E2E Architecture, and Deploy ---
   build_release:
     name: build + goreleaser
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: [test, lint]
     permissions:
       contents: write
