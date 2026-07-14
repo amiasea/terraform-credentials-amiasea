@@ -1,0 +1,10 @@
+dist/
+.winget/
+*.exe
+contexts.json
+.idea/
+.vscode/
+.gopath/
+# E2E test runtime state
+tests/e2e/tfcred_context/
+tests/e2e/.env
