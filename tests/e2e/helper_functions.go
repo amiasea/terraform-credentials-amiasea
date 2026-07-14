@@ -162,14 +162,14 @@ func runTerraform(
 		}
 	}
 
-	terraform := "terraform"
+	// terraform := "terraform"
 
-	if cliPath := os.Getenv("TERRAFORM_CLI_PATH"); cliPath != "" {
-		terraform = cliPath
-	}
+	// if cliPath := os.Getenv("TERRAFORM_CLI_PATH"); cliPath != "" {
+	// 	terraform = cliPath
+	// }
 
 	cmd := exec.Command(
-		terraform,
+		"terraform",
 		tfArgs...,
 	)
 

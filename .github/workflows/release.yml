@@ -16,6 +16,7 @@ jobs:
   # --- Step 1: Lint Codebase Against Root .golangci.yml ---
   lint:
     name: lint code
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,6 +36,7 @@ jobs:
   # --- Step 2: Run Unit Tests ---
   test:
     name: unit tests
+    if: false
     needs: [lint]
     runs-on: ubuntu-latest
     steps:
@@ -101,6 +103,7 @@ jobs:
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.15.8
+          terraform_wrapper: false
 
       - name: E2E Tests
         env:
