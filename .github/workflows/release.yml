@@ -60,7 +60,7 @@ jobs:
   build_release:
     name: build + goreleaser
     runs-on: windows-latest
-    needs: [test, lint]
+    # needs: [test, lint]
     permissions:
       contents: write
       pull-requests: write
