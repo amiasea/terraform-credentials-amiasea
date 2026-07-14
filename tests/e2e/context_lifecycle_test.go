@@ -133,7 +133,10 @@ func runCredentialsHelperBasic(
 
 	defer purgeTfcred(t)
 
-	copyTfcred()
+	err := copyTfcred()
+	if err != nil {
+		t.Fatalf("tfcred copy failed with error: %v", err)
+	}
 
 	runTfcred(
 		t,
