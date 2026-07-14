@@ -30,7 +30,7 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: 2.12.2
 
   # --- Step 2: Run Unit Tests Concurrently ---
   test:

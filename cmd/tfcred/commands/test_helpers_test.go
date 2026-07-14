@@ -29,7 +29,7 @@ func (v *fakeVault) Get(key string) (string, error) {
 	return token, nil
 }
 
-func (v *fakeVault) Set(key string, token string) error {
+func (v *fakeVault) Set(key, token string) error {
 	v.tokens[key] = token
 	return nil
 }
