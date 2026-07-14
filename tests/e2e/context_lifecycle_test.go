@@ -138,6 +138,8 @@ func runCredentialsHelperBasic(
 		t.Fatalf("tfcred copy failed with error: %v", err)
 	}
 
+	t.Log("dsdsfs")
+
 	runTfcred(
 		t,
 		"init",
