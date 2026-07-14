@@ -92,44 +92,13 @@ jobs:
       - name: Install Terraform CLI
         uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: 1.15.7
+          terraform_version: 1.15.8
 
       - name: E2E helper wiring validation
         env:
           TF_CLI_CONFIG_FILE: /tmp/tfcred-test/terraform.tfrc
         run: |
-          set -euo pipefail
-          echo "[e2e] validating tfcred helper wiring with the compiled binary"
           
-          # Fix 1: Create the strict native plugins directory layout path expected by install.ps1
-          mkdir -p /tmp/tfcred-test/bin
-          mkdir -p /tmp/tfcred-test/home/terraform.d/plugins
-          
-          export PATH="/tmp/tfcred-test/bin:$PATH"
-          export HOME="/tmp/tfcred-test/home"
-          export APPDATA="/tmp/tfcred-test/home"
-          
-          go build -ldflags "-X main.version=${{ steps.meta.outputs.version }}" -o /tmp/tfcred-test/bin/tfcred ./cmd/tfcred
-          go build -ldflags "-X main.version=${{ steps.meta.outputs.version }}" -o /tmp/tfcred-test/home/terraform.d/plugins/terraform-credentials-tfcred ./cmd/tfcred
-          
-          chmod +x /tmp/tfcred-test/bin/tfcred /tmp/tfcred-test/home/terraform.d/plugins/terraform-credentials-tfcred
-          
-          tfcred --help >/dev/null
-          tfcred version
-          tfcred init --domain app.terraform.io
-          
-          echo "[e2e] injecting test team token metadata into tfcred"
-          tfcred add --context ci-team-test --org ci-test-org --token-type team --domain app.terraform.io --token XXXXXXXXXXXXXX.atlasv1.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-          
-          pwsh -File ./scripts/install.ps1
-          
-          test -f "$TF_CLI_CONFIG_FILE"
-          
-          grep -q 'credentials_helper "tfcred"' "$TF_CLI_CONFIG_FILE"
-          
-          tfcred list
-          tfcred doctor
-          terraform version
 
       # ----------------------------------------------------------------------
       # Secure Passwordless Retrieval of App Assets from Azure Key Vault

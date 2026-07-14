@@ -140,9 +140,9 @@ func runCredentialsHelperBasic(
 		"app.terraform.io",
 	)
 
-	token := os.Getenv("TF_TOKEN_org")
+	token := os.Getenv("TF_TOKEN_ORG")
 	if token == "" {
-		t.Fatal("TF_TOKEN_org is not set")
+		t.Fatal("TF_TOKEN_ORG is not set")
 	}
 
 	output := runTfcred(
