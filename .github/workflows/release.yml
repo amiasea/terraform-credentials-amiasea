@@ -18,11 +18,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: 1.26
           cache: false
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
@@ -35,10 +37,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: 1.26
+
       - name: Unit Tests
         run: go test ./cmd/tfcred/commands/... -v
 
@@ -48,19 +52,23 @@ jobs:
     needs: [unit_tests, lint]
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version: 1.26
+
       - name: GoReleaser snapshot build
         uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
           args: release --snapshot --clean
+
       - name: Install Terraform CLI
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.15.8
           terraform_wrapper: false
+
       - name: E2E Tests
         env:
           TF_CLI_CONFIG_FILE: ${{ github.workspace }}/tests/e2e/terraform.tfrc.json
@@ -79,21 +87,26 @@ jobs:
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: 1.26
+
       - name: Extract metadata
         id: meta
         shell: pwsh
         run: |
           $rawVersion = "${{ github.ref_name }}"
           $cleanVersion = $rawVersion -replace '^v', ''
+
           "version=$cleanVersion" >> $env:GITHUB_OUTPUT
           "tag=$rawVersion" >> $env:GITHUB_OUTPUT
+
       - name: GoReleaser (build artifacts)
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -102,56 +115,221 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  validate_winget:
-    name: Validate Winget Assets
+  resolve_release_asset:
+    name: Resolve Release Asset
     needs: [build_release]
     runs-on: ubuntu-latest
+
     outputs:
       installer_url: ${{ steps.assets.outputs.installer_url }}
-      sha: ${{ steps.crypto.outputs.sha }}
+
     steps:
       - name: Resolve release assets
         id: assets
         uses: actions/github-script@v7
         env:
           INPUT_TAG: ${{ needs.build_release.outputs.tag }}
+
         with:
           script: |
             const tag = process.env.INPUT_TAG;
+
             const release = await github.rest.repos.getReleaseByTag({
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag
             });
-            const match = release.data.assets.find(a => 
-              a.name.toLowerCase().includes("windows") && 
-              a.name.toLowerCase().includes("amd64") && 
+
+            const match = release.data.assets.find(a =>
+              a.name.toLowerCase().includes("windows") &&
+              a.name.toLowerCase().includes("amd64") &&
               a.name.endsWith(".zip")
             );
-            if (!match) throw new Error("Windows AMD64 zip not found");
-            core.setOutput("installer_url", match.browser_download_url);
 
-      - name: Download and compute SHA256
+            if (!match) {
+              throw new Error("Windows AMD64 zip not found");
+            }
+
+            core.setOutput(
+              "installer_url",
+              match.browser_download_url
+            );
+
+      - name: Summary
+        run: |
+          echo "## Release Asset Resolved" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: ${{ needs.build_release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: ${{ steps.assets.outputs.installer_url }}" >> $GITHUB_STEP_SUMMARY
+
+  compute_installer_sha:
+    name: Compute Installer SHA256
+    needs:
+      - build_release
+      - resolve_release_asset
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      sha: ${{ steps.crypto.outputs.sha }}
+
+    steps:
+      - name: Download installer and compute SHA256
         id: crypto
         env:
-          INSTALLER_URL: ${{ steps.assets.outputs.installer_url }}
+          INSTALLER_URL: ${{ needs.resolve_release_asset.outputs.installer_url }}
+
         run: |
           set -euo pipefail
-          curl -L "$INSTALLER_URL" -o artifact.zip
-          SHA=$(sha256sum artifact.zip | awk '{print $1}')
-          echo "sha=$SHA" >> $GITHUB_OUTPUT
 
-      - name: Validation Summary
+          curl -L "$INSTALLER_URL" -o artifact.zip
+
+          SHA=$(sha256sum artifact.zip | awk '{print $1}')
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
         run: |
-          echo "## Winget Validation Successful" >> $GITHUB_STEP_SUMMARY
+          echo "## Installer SHA256 Computed" >> $GITHUB_STEP_SUMMARY
           echo "- Version: ${{ needs.build_release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- SHA256: ${{ steps.crypto.outputs.sha }}" >> $GITHUB_STEP_SUMMARY
+  
+  generate_manifests:
+    name: Generate WinGet Manifests
+    needs:
+      - build_release
+      - resolve_release_asset
+      - compute_installer_sha
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate manifest files
+        env:
+          VERSION: ${{ needs.build_release.outputs.version }}
+          INSTALLER_URL: ${{ needs.resolve_release_asset.outputs.installer_url }}
+          INSTALLER_SHA: ${{ needs.compute_installer_sha.outputs.sha }}
+
+        run: |
+          set -euo pipefail
+
+          MANIFEST_DIR="manifests/a/amiasea/tfcred/${VERSION}"
+
+          mkdir -p "$MANIFEST_DIR"
+
+          cat > "$MANIFEST_DIR/amiasea.tfcred.yaml" <<EOF
+          # yaml-language-server: \$schema=https://aka.ms/winget-manifest.version.1.12.0
+          PackageIdentifier: amiasea.tfcred
+          PackageVersion: ${VERSION}
+          DefaultLocale: en-US
+          ManifestType: version
+          ManifestVersion: 1.12.0
+          EOF
+
+          cat > "$MANIFEST_DIR/amiasea.tfcred.installer.yaml" <<EOF
+          # yaml-language-server: \$schema=https://aka.ms/winget-manifest.installer.1.12.0
+          PackageIdentifier: amiasea.tfcred
+          PackageVersion: ${VERSION}
+          InstallerLocale: en-US
+          InstallerType: zip
+          NestedInstallerType: portable
+          Scope: user
+          InstallModes:
+            - silent
+            - silentWithProgress
+          InstallerSwitches:
+            Silent: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
+            SilentWithProgress: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
+            Custom: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
+            Upgrade: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode upgrade
+          Commands:
+            - tfcred
+            - terraform-credentials-tfcred
+          NestedInstallerFiles:
+            - RelativeFilePath: install.ps1
+          ArchiveBinariesDependOnPath: true
+          Installers:
+            - Architecture: x64
+              InstallerUrl: ${INSTALLER_URL}
+              InstallerSha256: ${INSTALLER_SHA}
+              UninstallCommand: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\\AppData\\Local\\Programs\\tfcred\\uninstall.ps1"
+              AppsAndFeaturesEntries:
+                - DisplayName: tfcred
+                  Publisher: amiasea
+                  DisplayVersion: ${VERSION}
+                  ProductCode: tfcred-v${VERSION}
+          ManifestType: installer
+          ManifestVersion: 1.12.0
+          EOF
+
+          cat > "$MANIFEST_DIR/amiasea.tfcred.locale.en-US.yaml" <<EOF
+          # yaml-language-server: \$schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0
+          PackageIdentifier: amiasea.tfcred
+          PackageVersion: ${VERSION}
+          PackageLocale: en-US
+          Publisher: amiasea
+          PackageName: tfcred
+          License: MIT
+          ShortDescription: Terraform credential context manager
+          ManifestType: defaultLocale
+          ManifestVersion: 1.12.0
+          EOF
+
+      - name: Upload WinGet manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests
+          path: manifests
+
+      - name: Summary
+        run: |
+          echo "## WinGet Manifests Generated" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: ${{ needs.build_release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+
+  validate_winget_manifest:
+    name: Validate WinGet Manifest
+    needs:
+      - build_release
+      - generate_manifests
+
+    runs-on: windows-latest
+
+    steps:
+      - name: Download generated manifests
+        uses: actions/download-artifact@v4
+        with:
+          name: winget-manifests
+          path: manifests
+
+      - name: Validate manifest
+        shell: pwsh
+        run: |
+          winget validate --manifest "manifests/a/amiasea/tfcred/${{ needs.build_release.outputs.version }}"
+
+      - name: Summary
+        shell: pwsh
+        run: |
+          @"
+          ## WinGet Manifest Validation Successful
+
+          - Version: ${{ needs.build_release.outputs.version }}
+          "@ >> $env:GITHUB_STEP_SUMMARY
 
   submit_winget_pr:
     name: Submit to microsoft/winget-pkgs
-    needs: [build_release, validate_winget]
+    needs:
+      - build_release
+      - generate_manifests
+      - validate_winget_manifest
+
     runs-on: ubuntu-latest
+
     steps:
+      - name: Download validated WinGet manifests
+        uses: actions/download-artifact@v4
+        with:
+          name: winget-manifests
+          path: manifests
+
       - name: Az CLI Login via OIDC
         uses: azure/login@v3
         with:
@@ -162,8 +340,8 @@ jobs:
       - name: Fetch Secret from Azure Key Vault
         uses: azure/get-keyvault-secrets@v1
         with:
-          keyvault: 'kv-amiasea'
-          secrets: 'amiasea-github-private-key'
+          keyvault: kv-amiasea
+          secrets: amiasea-github-private-key
         id: kv-fetch
 
       - name: Generate GitHub App Token
@@ -180,69 +358,21 @@ jobs:
         uses: actions/github-script@v7
         env:
           INPUT_VERSION: ${{ needs.build_release.outputs.version }}
-          INSTALLER_URL: ${{ needs.validate_winget.outputs.installer_url }}
-          INSTALLER_SHA: ${{ needs.validate_winget.outputs.sha }}
         with:
           github-token: ${{ steps.app-token.outputs.token }}
+
           script: |
+            const fs = require('fs');
+
             const version = process.env.INPUT_VERSION;
-            const url = process.env.INSTALLER_URL;
-            const sha = process.env.INSTALLER_SHA;
-            
-            const file1Content = `# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.12.0
-            PackageIdentifier: amiasea.tfcred
-            PackageVersion: ${version}
-            DefaultLocale: en-US
-            ManifestType: version
-            ManifestVersion: 1.12.0`;
 
-            const file2Content = `# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0
-            PackageIdentifier: amiasea.tfcred
-            PackageVersion: ${version}
-            InstallerLocale: en-US
-            Architecture: x64
-            InstallerType: zip
-            NestedInstallerType: custom
-            Scope: user
-            InstallModes:
-              - silent
-              - silentWithProgress
-            InstallerSwitches:
-              Silent: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
-              SilentWithProgress: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
-              Custom: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
-              Upgrade: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode upgrade
-            UninstallCommand: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\\AppData\\Local\\Programs\\tfcred\\uninstall.ps1"
-            Commands:
-              - tfcred
-              - terraform-credentials-tfcred
-            NestedInstallerFiles:
-              - RelativeFilePath: install.ps1
-            ArchiveBinariesDependOnPath: true
-            Installers:
-              - Architecture: x64
-                InstallerUrl: ${url}
-                InstallerSha256: ${sha}
-            AppsAndFeaturesEntries:
-              - DisplayName: tfcred
-                Publisher: amiasea
-                DisplayVersion: ${version}
-                ProductCode: tfcred-v${version}
-            ManifestType: installer
-            ManifestVersion: 1.12.0`;
-
-            const file3Content = `# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0
-            PackageIdentifier: amiasea.tfcred
-            PackageVersion: ${version}
-            PackageLocale: en-US
-            Publisher: amiasea
-            PackageName: tfcred
-            License: MIT
-            ShortDescription: Terraform credential context manager
-            ManifestType: defaultLocale
-            ManifestVersion: 1.12.0`;
-            
             const manifestPath = `manifests/a/amiasea/tfcred/${version}`;
+
+            const files = [
+              `${manifestPath}/amiasea.tfcred.yaml`,
+              `${manifestPath}/amiasea.tfcred.installer.yaml`,
+              `${manifestPath}/amiasea.tfcred.locale.en-US.yaml`
+            ];
 
             const branchName = `winget-update-tfcred-${version}`;
 
@@ -259,7 +389,7 @@ jobs:
               sha: masterRef.data.object.sha
             });
 
-            const branchCommit = await github.rest.git.getCommit({
+            const commit = await github.rest.git.getCommit({
               owner: 'amiasea',
               repo: 'winget-pkgs',
               commit_sha: masterRef.data.object.sha
@@ -267,11 +397,9 @@ jobs:
 
             const blobs = [];
 
-            for (const [path, content] of [
-              [`${manifestPath}/amiasea.tfcred.yaml`, file1Content],
-              [`${manifestPath}/amiasea.tfcred.installer.yaml`, file2Content],
-              [`${manifestPath}/amiasea.tfcred.locale.en-US.yaml`, file3Content]
-            ]) {
+            for (const file of files) {
+              const content = fs.readFileSync(file, 'utf8');
+
               const blob = await github.rest.git.createBlob({
                 owner: 'amiasea',
                 repo: 'winget-pkgs',
@@ -280,7 +408,7 @@ jobs:
               });
 
               blobs.push({
-                path,
+                path: file,
                 mode: '100644',
                 type: 'blob',
                 sha: blob.data.sha
@@ -290,7 +418,7 @@ jobs:
             const tree = await github.rest.git.createTree({
               owner: 'amiasea',
               repo: 'winget-pkgs',
-              base_tree: branchCommit.data.tree.sha,
+              base_tree: commit.data.tree.sha,
               tree: blobs
             });
 
@@ -299,7 +427,9 @@ jobs:
               repo: 'winget-pkgs',
               message: `feat: add amiasea.tfcred version ${version} manifests`,
               tree: tree.data.sha,
-              parents: [masterRef.data.object.sha]
+              parents: [
+                masterRef.data.object.sha
+              ]
             });
 
             await github.rest.git.updateRef({
@@ -309,15 +439,19 @@ jobs:
               sha: newCommit.data.sha
             });
 
-      - name: Create PR to micrososft/winget-pkgs
+
+      - name: Create PR to microsoft/winget-pkgs
         id: submit-pr
         uses: actions/github-script@v7
         env:
           INPUT_VERSION: ${{ needs.build_release.outputs.version }}
+
         with:
           github-token: ${{ secrets.WINGET_CLASSIC_PAT }}
+
           script: |
             const version = process.env.INPUT_VERSION;
+
             const branchName = `winget-update-tfcred-${version}`;
 
             const pr = await github.rest.pulls.create({
@@ -329,9 +463,14 @@ jobs:
               base: 'master'
             });
 
-            core.setOutput("pr_url", pr.data.html_url);
+            core.setOutput(
+              "pr_url",
+              pr.data.html_url
+            );
+
+
       - name: Summary
         run: |
-            echo "## Winget PR Created Successfully" >> $GITHUB_STEP_SUMMARY
-            echo "- Version: ${{ needs.build_release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-            echo "- PR: ${{ steps.submit-pr.outputs.pr_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "## Winget PR Created Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: ${{ needs.build_release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- PR: ${{ steps.submit-pr.outputs.pr_url }}" >> $GITHUB_STEP_SUMMARY
