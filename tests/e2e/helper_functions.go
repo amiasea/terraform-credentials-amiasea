@@ -140,8 +140,14 @@ func runTerraform(
 		args...,
 	)
 
+	terraform := "terraform"
+
+	if cliPath := os.Getenv("TERRAFORM_CLI_PATH"); cliPath != "" {
+		terraform = filepath.Join(cliPath, "terraform.exe")
+	}
+
 	cmd := exec.Command(
-		"terraform",
+		terraform,
 		tfArgs...,
 	)
 
