@@ -23,31 +23,29 @@ linters:
     - misspell
     - unparam
 
-# Fixed: Formatters must be completely separated into their own top-level block
+  # ← This is the correct v2 location for linter settings
+  settings:
+    revive:
+      confidence: 0.8
+      rules:
+        - name: argument-limit
+          severity: warning
+          arguments: [5]
+        - name: blank-imports
+        - name: context-as-argument
+
+    gocyclo:
+      min-complexity: 15
+
+    govet:
+      enable-all: true
+
 formatters:
   enable:
     - gofumpt
   settings:
     gofumpt:
       extra-rules: true
-
-linters-settings:
-  revive:
-    confidence: 0.8
-    rules:
-      # - name: exported
-      #   severity: warning
-      #   arguments:
-      #     - "checkPrivateReceivers"
-      - name: argument-limit
-        severity: warning
-        arguments: [5]
-      - name: blank-imports
-      - name: context-as-argument
-  gocyclo:
-    min-complexity: 15
-  govet:
-    enable-all: true
 
 issues:
   max-issues-per-linter: 0
