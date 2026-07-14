@@ -55,6 +55,20 @@ func repoRoot() string {
 	)
 }
 
+func copyTfcred() error {
+	source := filepath.Join(
+		repoRoot(),
+		"dist",
+		"tfcred_windows_amd64_v1",
+		"terraform-credentials-tfcred.exe",
+	)
+
+	return copyFile(
+		source,
+		tfCredBinary,
+	)
+}
+
 func copyFile(
 	source string,
 	target string,

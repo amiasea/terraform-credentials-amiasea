@@ -133,6 +133,8 @@ func runCredentialsHelperBasic(
 
 	defer purgeTfcred(t)
 
+	copyTfcred()
+
 	runTfcred(
 		t,
 		"init",
