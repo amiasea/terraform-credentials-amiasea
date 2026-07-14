@@ -110,20 +110,6 @@ jobs:
       installer_url: ${{ steps.assets.outputs.installer_url }}
       sha: ${{ steps.crypto.outputs.sha }}
     steps:
-      - name: Az CLI Login via OIDC
-        uses: azure/login@v3
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Fetch Secret from Azure Key Vault
-        uses: azure/get-keyvault-secrets@v1
-        with:
-          keyvault: 'kv-tfcred'
-          secrets: 'amiasea-github-private-key'
-        id: kv-fetch
-
       - name: Resolve release assets
         id: assets
         uses: actions/github-script@v7
@@ -176,7 +162,7 @@ jobs:
       - name: Fetch Secret from Azure Key Vault
         uses: azure/get-keyvault-secrets@v1
         with:
-          keyvault: 'kv-tfcred'
+          keyvault: 'kv-amiasea'
           secrets: 'amiasea-github-private-key'
         id: kv-fetch
 
