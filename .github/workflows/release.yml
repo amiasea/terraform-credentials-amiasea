@@ -78,11 +78,13 @@ jobs:
 
       - name: Extract metadata
         id: meta
+        shell: pwsh
         run: |
-          RAW_VERSION="${GITHUB_REF_NAME}"
-          CLEAN_VERSION="${RAW_VERSION#v}"
-          echo "version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
-          echo "tag=${RAW_VERSION}" >> $GITHUB_OUTPUT
+          $rawVersion = "${{ github.ref_name }}"
+          $cleanVersion = $rawVersion -replace '^v', ''
+
+          "version=$cleanVersion" >> $env:GITHUB_OUTPUT
+          "tag=$rawVersion" >> $env:GITHUB_OUTPUT
 
       - name: GoReleaser (build artifacts)
         uses: goreleaser/goreleaser-action@v6
