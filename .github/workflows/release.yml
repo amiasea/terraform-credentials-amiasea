@@ -73,7 +73,7 @@ jobs:
         with:
           version: latest
           args: release --snapshot --clean
-          
+
       - name: Install Terraform CLI
         uses: hashicorp/setup-terraform@v4
         with:
@@ -141,7 +141,7 @@ jobs:
       - name: Fetch Secret from Azure Key Vault
         uses: azure/get-keyvault-secrets@v1
         with:
-          keyvault: 'kv-tfcred'
+          keyvault: 'kv-amiasea'
           secrets: 'amiasea-github-private-key'
         id: kv-fetch
 
