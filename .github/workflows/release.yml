@@ -175,8 +175,8 @@ jobs:
           owner: amiasea
           repositories: winget-pkgs
 
-      - name: Submit manifests directly via GitHub API
-        id: submit-manifests
+      - name: Commit manifests to amiasea/winget-pkgs
+        id: commit-manifests
         uses: actions/github-script@v7
         env:
           INPUT_VERSION: ${{ needs.build_release.outputs.version }}
@@ -188,49 +188,145 @@ jobs:
             const version = process.env.INPUT_VERSION;
             const url = process.env.INSTALLER_URL;
             const sha = process.env.INSTALLER_SHA;
-            const branchName = `winget-update-tfcred-${version}`;
             
-            const file1Content = `# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.12.0\nPackageIdentifier: amiasea.tfcred\nPackageVersion: ${version}\nDefaultLocale: en-US\nManifestType: version\nManifestVersion: 1.12.0`;
-            const file2Content = `# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0\nPackageIdentifier: amiasea.tfcred\nPackageVersion: ${version}\nInstallerLocale: en-US\nArchitecture: x64\nInstallerType: zip\nNestedInstallerType: custom\nScope: user\nInstallModes:\n  - silent\n  - silentWithProgress\nInstallerSwitches:\n  Silent: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install\n  SilentWithProgress: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install\n  Custom: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install\n  Upgrade: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode upgrade\nUninstallCommand: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\\AppData\\Local\\Programs\\tfcred\\uninstall.ps1"\nCommands:\n  - tfcred\n  - terraform-credentials-tfcred\nNestedInstallerFiles:\n  - RelativeFilePath: install.ps1\nArchiveBinariesDependOnPath: true\nInstallers:\n  - Architecture: x64\n    InstallerUrl: ${url}\n    InstallerSha256: ${sha}\nAppsAndFeaturesEntries:\n  - DisplayName: tfcred\n    Publisher: amiasea\n    DisplayVersion: ${version}\n    ProductCode: tfcred-v${version}\nManifestType: installer\nManifestVersion: 1.12.0`;
-            const file3Content = `# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0\nPackageIdentifier: amiasea.tfcred\nPackageVersion: ${version}\nPackageLocale: en-US\nPublisher: amiasea\nPackageName: tfcred\nLicense: MIT\nShortDescription: Terraform credential context manager\nManifestType: defaultLocale\nManifestVersion: 1.12.0`;
+            const file1Content = `# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.12.0
+            PackageIdentifier: amiasea.tfcred
+            PackageVersion: ${version}
+            DefaultLocale: en-US
+            ManifestType: version
+            ManifestVersion: 1.12.0`;
+
+            const file2Content = `# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0
+            PackageIdentifier: amiasea.tfcred
+            PackageVersion: ${version}
+            InstallerLocale: en-US
+            Architecture: x64
+            InstallerType: zip
+            NestedInstallerType: custom
+            Scope: user
+            InstallModes:
+              - silent
+              - silentWithProgress
+            InstallerSwitches:
+              Silent: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
+              SilentWithProgress: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
+              Custom: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
+              Upgrade: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode upgrade
+            UninstallCommand: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\\AppData\\Local\\Programs\\tfcred\\uninstall.ps1"
+            Commands:
+              - tfcred
+              - terraform-credentials-tfcred
+            NestedInstallerFiles:
+              - RelativeFilePath: install.ps1
+            ArchiveBinariesDependOnPath: true
+            Installers:
+              - Architecture: x64
+                InstallerUrl: ${url}
+                InstallerSha256: ${sha}
+            AppsAndFeaturesEntries:
+              - DisplayName: tfcred
+                Publisher: amiasea
+                DisplayVersion: ${version}
+                ProductCode: tfcred-v${version}
+            ManifestType: installer
+            ManifestVersion: 1.12.0`;
+
+            const file3Content = `# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0
+            PackageIdentifier: amiasea.tfcred
+            PackageVersion: ${version}
+            PackageLocale: en-US
+            Publisher: amiasea
+            PackageName: tfcred
+            License: MIT
+            ShortDescription: Terraform credential context manager
+            ManifestType: defaultLocale
+            ManifestVersion: 1.12.0`;
             
             const manifestPath = `manifests/a/amiasea/tfcred/${version}`;
-            
+
+            const branchName = `winget-update-tfcred-${version}`;
+
             const masterRef = await github.rest.git.getRef({
               owner: 'amiasea',
               repo: 'winget-pkgs',
               ref: 'heads/master'
             });
-            
+
             await github.rest.git.createRef({
               owner: 'amiasea',
               repo: 'winget-pkgs',
               ref: `refs/heads/${branchName}`,
               sha: masterRef.data.object.sha
             });
-            
-            async function commitFile(path, content, message) {
-              await github.rest.repos.createOrUpdateFileContents({
+
+            const branchCommit = await github.rest.git.getCommit({
+              owner: 'amiasea',
+              repo: 'winget-pkgs',
+              commit_sha: masterRef.data.object.sha
+            });
+
+            const blobs = [];
+
+            for (const [path, content] of [
+              [`${manifestPath}/amiasea.tfcred.yaml`, file1Content],
+              [`${manifestPath}/amiasea.tfcred.installer.yaml`, file2Content],
+              [`${manifestPath}/amiasea.tfcred.locale.en-US.yaml`, file3Content]
+            ]) {
+              const blob = await github.rest.git.createBlob({
                 owner: 'amiasea',
                 repo: 'winget-pkgs',
-                path: path,
-                message: message,
-                content: Buffer.from(content).toString('base64'),
-                branch: branchName
+                content,
+                encoding: 'utf-8'
+              });
+
+              blobs.push({
+                path,
+                mode: '100644',
+                type: 'blob',
+                sha: blob.data.sha
               });
             }
-            
-            await commitFile(`${manifestPath}/amiasea.tfcred.yaml`, file1Content, `feat: add version manifest for ${version}`);
-            await commitFile(`${manifestPath}/amiasea.tfcred.installer.yaml`, file2Content, `feat: add installer manifest for ${version}`);
-            await commitFile(`${manifestPath}/amiasea.tfcred.locale.en-US.yaml`, file3Content, `feat: add locale manifest for ${version}`);
+
+            const tree = await github.rest.git.createTree({
+              owner: 'amiasea',
+              repo: 'winget-pkgs',
+              base_tree: branchCommit.data.tree.sha,
+              tree: blobs
+            });
+
+            const newCommit = await github.rest.git.createCommit({
+              owner: 'amiasea',
+              repo: 'winget-pkgs',
+              message: `feat: add amiasea.tfcred version ${version} manifests`,
+              tree: tree.data.sha,
+              parents: [masterRef.data.object.sha]
+            });
+
+            await github.rest.git.updateRef({
+              owner: 'amiasea',
+              repo: 'winget-pkgs',
+              ref: `heads/${branchName}`,
+              sha: newCommit.data.sha
+            });
+
+      - name: Create PR to micrososft/winget-pkgs
+        id: submit-pr
+        uses: actions/github-script@v7
+        env:
+          INPUT_VERSION: ${{ needs.build_release.outputs.version }}
+        with:
+          github-token: ${{ secrets.WINGET_PAT }}
+          script: |
+            const version = process.env.INPUT_VERSION;
+            const branchName = `winget-update-tfcred-${version}`;
 
             const pr = await github.rest.pulls.create({
-            owner: 'microsoft',
-            repo: 'winget-pkgs',
-            title: `New version: amiasea.tfcred version ${version}`,
-            body: `Automated WinGet submission update for amiasea.tfcred version ${version}.`,
-            head: `amiasea:${branchName}`,
-            base: 'master'
+              owner: 'microsoft',
+              repo: 'winget-pkgs',
+              title: `New version: amiasea.tfcred version ${version}`,
+              body: `Automated WinGet submission update for amiasea.tfcred version ${version}.`,
+              head: `amiasea:${branchName}`,
+              base: 'master'
             });
 
             core.setOutput("pr_url", pr.data.html_url);
@@ -238,4 +334,4 @@ jobs:
         run: |
             echo "## Winget PR Created Successfully" >> $GITHUB_STEP_SUMMARY
             echo "- Version: ${{ needs.build_release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-            echo "- PR: ${{ steps.submit-manifests.outputs.pr_url }}" >> $GITHUB_STEP_SUMMARY
+            echo "- PR: ${{ steps.submit-pr.outputs.pr_url }}" >> $GITHUB_STEP_SUMMARY
