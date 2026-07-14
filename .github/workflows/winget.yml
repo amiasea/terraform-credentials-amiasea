@@ -113,7 +113,6 @@ jobs:
             const sha = process.env.INSTALLER_SHA;
             const branchName = `winget-update-tfcred-${version}`;
             
-            // Fixed: Use getOctokit
             const appOctokit = github.getOctokit(process.env.WINGET_TOKEN);
             
             // v1.12.0 multi-file manifest structures

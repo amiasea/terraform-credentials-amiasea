@@ -1,6 +1,7 @@
 name: release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -45,8 +46,13 @@ jobs:
         with:
           go-version: 1.26
 
-      - name: Run unit tests
-        run: go test ./... -v
+      # ----------------------------------------------------------------------
+      # Unit Tests
+      # ----------------------------------------------------------------------
+      - name: Unit Tests
+        run: |
+          # Run Unit Tests
+          go test ./cmd/tfcred/commands/... -v
 
   # --- Step 3: Build, Verify E2E Architecture, and Deploy ---
   build_release:
@@ -78,22 +84,6 @@ jobs:
           echo "version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
           echo "tag=${RAW_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Install Terraform CLI
-        uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: 1.15.8
-
-      # ----------------------------------------------------------------------
-      # Unit Tests
-      # ----------------------------------------------------------------------
-      - name: E2E helper wiring validation
-        env:
-          TF_CLI_CONFIG_FILE: ${{ github.workspace }}/tests/e2e/terraform.tfrc.json
-          TF_TOKEN_ORG: ${{ secrets.TF_TOKEN_ORG }}
-        run: |
-          # Run your E2E tests
-          go test ./cmd/tfcred/commands/... -v
-
       - name: GoReleaser (build artifacts)
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -105,6 +95,12 @@ jobs:
       # ----------------------------------------------------------------------
       # E2E Tests
       # ----------------------------------------------------------------------
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+
       - name: E2E Tests
         env:
           TF_CLI_CONFIG_FILE: ${{ github.workspace }}/tests/e2e/terraform.tfrc.json
@@ -143,22 +139,22 @@ jobs:
       # ----------------------------------------------------------------------
       # Trigger winget pipeline dispatch loop using GitHub App permissions
       # ----------------------------------------------------------------------
-      - name: Trigger winget workflow
-        uses: actions/github-script@v7
-        env:
-          WINGET_TOKEN: ${{ steps.app-token.outputs.token }}
-        with:
-          script: |
-            // Instantiating custom client via App Token bypasses default GITHUB_TOKEN blocks
-            const appOctokit = github.withAuth(process.env.WINGET_TOKEN);
+      # - name: Trigger winget workflow
+      #   uses: actions/github-script@v7
+      #   env:
+      #     WINGET_TOKEN: ${{ steps.app-token.outputs.token }}
+      #   with:
+      #     script: |
+      #       // Instantiating custom client via App Token bypasses default GITHUB_TOKEN blocks
+      #       const appOctokit = github.getOctokit(process.env.WINGET_TOKEN);
             
-            await appOctokit.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "winget.yml",
-              ref: "main",
-              inputs: {
-                version: "${{ steps.meta.outputs.version }}",
-                tag: "${{ steps.meta.outputs.tag }}"
-              }
-            });
+      #       await appOctokit.rest.actions.createWorkflowDispatch({
+      #         owner: context.repo.owner,
+      #         repo: context.repo.repo,
+      #         workflow_id: "winget.yml",
+      #         ref: "main",
+      #         inputs: {
+      #           version: "${{ steps.meta.outputs.version }}",
+      #           tag: "${{ steps.meta.outputs.tag }}"
+      #         }
+      #       });
