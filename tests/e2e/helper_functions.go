@@ -140,6 +140,28 @@ func runTerraform(
 		args...,
 	)
 
+	cliPath := os.Getenv("TERRAFORM_CLI_PATH")
+
+	t.Logf("TERRAFORM_CLI_PATH=%q", cliPath)
+
+	if cliPath != "" {
+		info, err := os.Stat(cliPath)
+		if err != nil {
+			t.Logf("stat TERRAFORM_CLI_PATH failed: %v", err)
+		} else {
+			t.Logf("TERRAFORM_CLI_PATH exists: isDir=%v mode=%v", info.IsDir(), info.Mode())
+		}
+
+		entries, err := os.ReadDir(cliPath)
+		if err != nil {
+			t.Logf("read dir failed: %v", err)
+		} else {
+			for _, entry := range entries {
+				t.Logf("terraform dir entry: %s", entry.Name())
+			}
+		}
+	}
+
 	terraform := "terraform"
 
 	if cliPath := os.Getenv("TERRAFORM_CLI_PATH"); cliPath != "" {
