@@ -78,6 +78,22 @@ jobs:
           echo "version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
           echo "tag=${RAW_VERSION}" >> $GITHUB_OUTPUT
 
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+
+      # ----------------------------------------------------------------------
+      # Unit Tests
+      # ----------------------------------------------------------------------
+      - name: E2E helper wiring validation
+        env:
+          TF_CLI_CONFIG_FILE: ${{ github.workspace }}/tests/e2e/terraform.tfrc.json
+          TF_TOKEN_ORG: ${{ secrets.TF_TOKEN_ORG }}
+        run: |
+          # Run your E2E tests
+          go test ./cmd/tfcred/commands/... -v
+
       - name: GoReleaser (build artifacts)
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -87,18 +103,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ----------------------------------------------------------------------
-      # E2E Helper Wiring Validation (Strict HashiCorp Location Simulation)
+      # E2E Tests
       # ----------------------------------------------------------------------
-      - name: Install Terraform CLI
-        uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: 1.15.8
-
-      - name: E2E helper wiring validation
+      - name: E2E Tests
         env:
-          TF_CLI_CONFIG_FILE: /tmp/tfcred-test/terraform.tfrc
+          TF_CLI_CONFIG_FILE: ${{ github.workspace }}/tests/e2e/terraform.tfrc.json
+          TF_TOKEN_ORG: ${{ secrets.TF_TOKEN_ORG }}
         run: |
-          
+          # Run your E2E tests
+          go test ./tests/e2e/... -v
 
       # ----------------------------------------------------------------------
       # Secure Passwordless Retrieval of App Assets from Azure Key Vault

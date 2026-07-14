@@ -37,13 +37,13 @@ func runConfigurationTests(
 		t,
 		"config",
 		"--default-domain",
-		"app.eu.terraform.io",
+		"app.terraform.io",
 	)
 
 	assertContains(
 		t,
 		output,
-		"[tfcred] default domain set to app.eu.terraform.io",
+		"[tfcred] default domain set to app.terraform.io",
 	)
 
 	output = runTfcred(
@@ -54,6 +54,6 @@ func runConfigurationTests(
 	assertContains(
 		t,
 		output,
-		"default_domain=app.eu.terraform.io",
+		"default_domain=app.terraform.io",
 	)
 }

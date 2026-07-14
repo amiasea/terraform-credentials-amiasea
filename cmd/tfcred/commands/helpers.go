@@ -10,7 +10,7 @@ import (
 // supportedDomains lists all officially supported Terraform domains.
 var supportedDomains = []string{
 	"app.terraform.io",
-	"app.eu.terraform.io",
+	"app.terraform.io",
 }
 
 // isSupportedDomain returns true if the given domain is supported.

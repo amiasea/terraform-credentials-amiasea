@@ -66,10 +66,3 @@ func Dev() error {
 
 	return InstallDev()
 }
-
-// pluginDir := e2e.DefaultPluginDir()
-
-// _, err := e2e.InstallTfcred(
-// 	"terraform-credentials-tfcred.exe",
-// 	pluginDir,
-// )

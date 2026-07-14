@@ -19,7 +19,7 @@ func TestInitCommand_WithDomain(t *testing.T) {
 
 	cmd.SetArgs([]string{
 		"--domain",
-		"app.eu.terraform.io",
+		"app.terraform.io",
 	})
 
 	output := captureStdout(t, func() {
@@ -33,7 +33,7 @@ func TestInitCommand_WithDomain(t *testing.T) {
 
 	if !strings.Contains(
 		output,
-		"initialized with default domain app.eu.terraform.io",
+		"initialized with default domain app.terraform.io",
 	) {
 		t.Fatalf(
 			"unexpected output:\n%s",
@@ -43,9 +43,9 @@ func TestInitCommand_WithDomain(t *testing.T) {
 
 	config := store.Load()
 
-	if config.DefaultDomain != "app.eu.terraform.io" {
+	if config.DefaultDomain != "app.terraform.io" {
 		t.Fatalf(
-			"expected app.eu.terraform.io, got %s",
+			"expected app.terraform.io, got %s",
 			config.DefaultDomain,
 		)
 	}
