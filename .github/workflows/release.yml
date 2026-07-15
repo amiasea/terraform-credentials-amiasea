@@ -200,79 +200,40 @@ jobs:
       - resolve_release_asset
       - compute_installer_sha
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Generate manifest files
+        shell: pwsh
         env:
           VERSION: ${{ needs.build_release.outputs.version }}
           INSTALLER_URL: ${{ needs.resolve_release_asset.outputs.installer_url }}
           INSTALLER_SHA: ${{ needs.compute_installer_sha.outputs.sha }}
 
         run: |
-          set -euo pipefail
+          ./scripts/gen-winget.ps1 `
+            -Version "$env:VERSION" `
+            -InstallerUrl "$env:INSTALLER_URL" `
+            -InstallerSha256 "$env:INSTALLER_SHA"
 
-          MANIFEST_DIR="manifests/a/amiasea/tfcred/${VERSION}"
+      - name: Upload WinGet manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests
+          path: manifests
 
-          mkdir -p "$MANIFEST_DIR"
+      - name: Summary
+        shell: pwsh
+        run: |
+          @"
+          ## WinGet Manifests Generated
 
-          cat > "$MANIFEST_DIR/amiasea.tfcred.yaml" <<EOF
-          # yaml-language-server: \$schema=https://aka.ms/winget-manifest.version.1.12.0
-          PackageIdentifier: amiasea.tfcred
-          PackageVersion: ${VERSION}
-          DefaultLocale: en-US
-          ManifestType: version
-          ManifestVersion: 1.12.0
-          EOF
-
-          cat > "$MANIFEST_DIR/amiasea.tfcred.installer.yaml" <<EOF
-          # yaml-language-server: \$schema=https://aka.ms/winget-manifest.installer.1.12.0
-          PackageIdentifier: amiasea.tfcred
-          PackageVersion: ${VERSION}
-          InstallerLocale: en-US
-          InstallerType: zip
-          NestedInstallerType: portable
-          Scope: user
-          InstallModes:
-            - silent
-            - silentWithProgress
-          InstallerSwitches:
-            Silent: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
-            SilentWithProgress: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
-            Custom: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode install
-            Upgrade: -NoProfile -ExecutionPolicy Bypass -File .\\install.ps1 -Mode upgrade
-          Commands:
-            - tfcred
-            - terraform-credentials-tfcred
-          NestedInstallerFiles:
-            - RelativeFilePath: install.ps1
-          ArchiveBinariesDependOnPath: true
-          Installers:
-            - Architecture: x64
-              InstallerUrl: ${INSTALLER_URL}
-              InstallerSha256: ${INSTALLER_SHA}
-              UninstallCommand: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\\AppData\\Local\\Programs\\tfcred\\uninstall.ps1"
-              AppsAndFeaturesEntries:
-                - DisplayName: tfcred
-                  Publisher: amiasea
-                  DisplayVersion: ${VERSION}
-                  ProductCode: tfcred-v${VERSION}
-          ManifestType: installer
-          ManifestVersion: 1.12.0
-          EOF
-
-          cat > "$MANIFEST_DIR/amiasea.tfcred.locale.en-US.yaml" <<EOF
-          # yaml-language-server: \$schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0
-          PackageIdentifier: amiasea.tfcred
-          PackageVersion: ${VERSION}
-          PackageLocale: en-US
-          Publisher: amiasea
-          PackageName: tfcred
-          License: MIT
-          ShortDescription: Terraform credential context manager
-          ManifestType: defaultLocale
-          ManifestVersion: 1.12.0
-          EOF
+          - Version: ${{ needs.build_release.outputs.version }}
+          - Location: manifests/a/amiasea/tfcred/${{ needs.build_release.outputs.version }}
+          "@ >> $env:GITHUB_STEP_SUMMARY
 
       - name: Upload WinGet manifests
         uses: actions/upload-artifact@v4

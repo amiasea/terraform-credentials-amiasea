@@ -6,8 +6,21 @@ before:
     - go mod tidy
 
 builds:
+  # Main CLI tool
   - id: tfcred
     main: ./cmd/tfcred
+    binary: tfcred
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+    goos:
+      - windows
+    goarch:
+      - amd64
+
+  # Terraform credentials helper (Terraform plugin)
+  - id: tfhelper
+    main: ./cmd/tfhelper
     binary: terraform-credentials-tfcred
     ldflags:
       - -s -w
@@ -25,10 +38,6 @@ archives:
     files:
       - README*
       - LICENSE*
-      - src: scripts/install.ps1
-        dst: install.ps1
-      - src: scripts/uninstall.ps1
-        dst: uninstall.ps1
 
 checksum:
   name_template: "checksums.txt"

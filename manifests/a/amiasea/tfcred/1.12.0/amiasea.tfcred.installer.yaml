@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
+PackageIdentifier: amiasea.tfcred
+PackageVersion: 1.12.0
+InstallerLocale: en-US
+InstallerType: zip
+NestedInstallerType: portable
+InstallModes:
+  - silent
+  - silentWithProgress
+Commands:
+  - tfcred
+NestedInstallerFiles:
+  - RelativeFilePath: tfcred.exe
+  - RelativeFilePath: terraform-credentials-tfcred.exe
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/amiasea/terraform-credentials-tfcred/releases/download/v1.12.0/terraform-credentials-tfcred_windows_amd64.zip
+    InstallerSha256: EF0C1D2033BFABC5BFC0D0F8EFF6E21495354FFAEC226B67BB6802B37E98F184
+    AppsAndFeaturesEntries:
+      - DisplayName: tfcred
+        Publisher: amiasea
+        DisplayVersion: 1.12.0
+        ProductCode: tfcred-v1.12.0
+ManifestType: installer
+ManifestVersion: 1.12.0
