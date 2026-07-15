@@ -223,7 +223,7 @@ jobs:
         shell: pwsh
         run: |
           winget --info
-          winget upgrade Microsoft.AppInstaller
+          winget upgrade Microsoft.AppInstaller --silent --accept-source-agreements --accept-package-agreements
           winget --info
 
       - name: Upload WinGet manifests
@@ -273,6 +273,7 @@ jobs:
 
   submit_winget_pr:
     name: Submit to microsoft/winget-pkgs
+    if: false
     needs:
       - build_release
       - generate_manifests
