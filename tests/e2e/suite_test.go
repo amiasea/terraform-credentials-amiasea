@@ -6,17 +6,35 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if err := os.Setenv("TF_CLI_CONFIG_FILE", tfConfigFile); err != nil {
-		panic("failed to set TF_CLI_CONFIG_FILE env var: " + err.Error())
+	if err := prepareE2EEnvironment(); err != nil {
+		panic(
+			"failed to prepare e2e environment: " + err.Error(),
+		)
 	}
 
-	if err := os.Setenv("TF_CRED_CONTEXT_DIR", tfCredContextDir); err != nil {
-		panic("failed to set TF_CRED_CONTEXT_DIR env var: " + err.Error())
+	if err := os.Setenv(
+		"TF_CLI_CONFIG_FILE",
+		tfConfigFile,
+	); err != nil {
+		panic(
+			"failed to set TF_CLI_CONFIG_FILE: " + err.Error(),
+		)
 	}
 
-	os.Exit(
-		m.Run(),
-	)
+	if err := os.Setenv(
+		"TF_CRED_CONTEXT_DIR",
+		tfCredContextDir,
+	); err != nil {
+		panic(
+			"failed to set TF_CRED_CONTEXT_DIR: " + err.Error(),
+		)
+	}
+
+	code := m.Run()
+
+	cleanupPaths()
+
+	os.Exit(code)
 }
 
 func TestE2E(t *testing.T) {

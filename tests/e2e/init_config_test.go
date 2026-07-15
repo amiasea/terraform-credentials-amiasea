@@ -19,7 +19,7 @@ func runConfigurationTests(
 	assertContains(
 		t,
 		output,
-		"[tfcred] initialized with default domain app.terraform.io",
+		"[tfcred] ✅ Initialization completed successfully.",
 	)
 
 	output = runTfcred(

@@ -66,8 +66,17 @@ func runInit(defaultDomain string) error {
 		return fmt.Errorf("failed to get current executable: %w", err)
 	}
 
-	helperPath := filepath.Join(terraformPluginDir, "terraform-credentials-tfcred.exe")
-	if err := copyFile(exe, helperPath); err != nil {
+	helperSource := filepath.Join(
+		filepath.Dir(exe),
+		"terraform-credentials-tfcred.exe",
+	)
+
+	helperPath := filepath.Join(
+		terraformPluginDir,
+		"terraform-credentials-tfcred.exe",
+	)
+
+	if err := copyFile(helperSource, helperPath); err != nil {
 		return fmt.Errorf("failed to install Terraform credentials helper: %w", err)
 	}
 

@@ -1,7 +1,9 @@
 package e2e
 
 import (
+	"archive/zip"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,9 +20,21 @@ var (
 		"plugins",
 	)
 
-	tfCredBinary = filepath.Join(
+	tfHelperCredBinary = filepath.Join(
 		tfPluginDir,
 		"terraform-credentials-tfcred.exe",
+	)
+
+	tfInstallDir = filepath.Join(
+		repoRoot(),
+		"tests",
+		"e2e",
+		"install",
+	)
+
+	tfCredBinary = filepath.Join(
+		tfInstallDir,
+		"tfcred.exe",
 	)
 
 	tfConfigFile = filepath.Join(
@@ -37,9 +51,7 @@ var (
 		"tfcred_context",
 	)
 
-	workspaceDir = filepath.Join(
-		"workspace",
-	)
+	workspaceDir = "workspace"
 )
 
 func repoRoot() string {
@@ -55,38 +67,92 @@ func repoRoot() string {
 	)
 }
 
-func copyTfcred() error {
-	source := filepath.Join(
-		repoRoot(),
-		"dist",
-		"tfcred_windows_amd64_v1",
-		"terraform-credentials-tfcred.exe",
-	)
+func prepareE2EEnvironment() error {
+	cleanupPaths()
 
-	return copyFile(
-		source,
-		tfCredBinary,
-	)
+	return extractTfcredPackage()
 }
 
-func copyFile(
-	source string,
-	target string,
-) error {
-	input, err := os.ReadFile(source)
+func cleanupPaths() {
+	_ = os.RemoveAll(tfInstallDir)
+	_ = os.RemoveAll(tfCredContextDir)
+	_ = os.Remove(tfHelperCredBinary)
+}
+
+func extractTfcredPackage() error {
+	archive := filepath.Join(
+		repoRoot(),
+		"dist",
+		"terraform-credentials-tfcred_windows_amd64.zip",
+	)
+
+	if err := os.MkdirAll(tfInstallDir, 0o755); err != nil {
+		return err
+	}
+
+	reader, err := zip.OpenReader(archive)
 	if err != nil {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return err
+	defer reader.Close()
+
+	for _, file := range reader.File {
+		target := filepath.Join(
+			tfInstallDir,
+			file.Name,
+		)
+
+		if file.FileInfo().IsDir() {
+			if err := os.MkdirAll(target, 0o755); err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+
+		source, err := file.Open()
+		if err != nil {
+			return err
+		}
+
+		destination, err := os.OpenFile(
+			target,
+			os.O_CREATE|os.O_WRONLY|os.O_TRUNC,
+			0o755,
+		)
+		if err != nil {
+			source.Close()
+			return err
+		}
+
+		_, err = io.Copy(
+			destination,
+			source,
+		)
+
+		source.Close()
+		destination.Close()
+
+		if err != nil {
+			return err
+		}
+
+		entries, err := os.ReadDir(tfInstallDir)
+		if err != nil {
+			return err
+		}
+
+		for _, entry := range entries {
+			fmt.Println("[e2e install]", entry.Name())
+		}
 	}
 
-	return os.WriteFile(
-		target,
-		input,
-		0o755,
-	)
+	return nil
 }
 
 func runTfcred(
@@ -198,6 +264,10 @@ func purgeTfcred(
 	t *testing.T,
 ) {
 	t.Helper()
+
+	if _, err := os.Stat(tfCredBinary); err != nil {
+		return
+	}
 
 	_, _ = exec.Command(
 		tfCredBinary,
