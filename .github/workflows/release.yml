@@ -58,7 +58,7 @@ jobs:
           go-version: 1.26
 
       - name: GoReleaser snapshot build
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: latest
           args: release --snapshot --clean
@@ -108,7 +108,7 @@ jobs:
           "tag=$rawVersion" >> $env:GITHUB_OUTPUT
 
       - name: GoReleaser (build artifacts)
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: latest
           args: release --clean
@@ -126,7 +126,7 @@ jobs:
     steps:
       - name: Resolve release assets
         id: assets
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           INPUT_TAG: ${{ needs.build_release.outputs.tag }}
 
@@ -223,9 +223,11 @@ jobs:
         shell: pwsh
         run: |
           winget --info
+          winget upgrade Microsoft.AppInstaller
+          winget --info
 
       - name: Upload WinGet manifests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: winget-manifests
           path: manifests
@@ -310,7 +312,7 @@ jobs:
 
       - name: Commit manifests to amiasea/winget-pkgs
         id: commit-manifests
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           INPUT_VERSION: ${{ needs.build_release.outputs.version }}
         with:
@@ -396,7 +398,7 @@ jobs:
 
       - name: Create PR to microsoft/winget-pkgs
         id: submit-pr
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           INPUT_VERSION: ${{ needs.build_release.outputs.version }}
 
