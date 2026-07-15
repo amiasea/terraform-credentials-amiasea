@@ -46,6 +46,7 @@ Commands:
   - tfcred
 NestedInstallerFiles:
   - RelativeFilePath: tfcred.exe
+    PortableCommandAlias: tfcred
   - RelativeFilePath: terraform-credentials-tfcred.exe
 Installers:
   - Architecture: x64

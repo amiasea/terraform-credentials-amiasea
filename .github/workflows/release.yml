@@ -219,6 +219,11 @@ jobs:
             -InstallerUrl "$env:INSTALLER_URL" `
             -InstallerSha256 "$env:INSTALLER_SHA"
 
+      - name: Show WinGet info
+        shell: pwsh
+        run: |
+          winget --info
+
       - name: Upload WinGet manifests
         uses: actions/upload-artifact@v4
         with:
@@ -302,7 +307,7 @@ jobs:
           private-key: ${{ steps.kv-fetch.outputs.amiasea-github-private-key }}
           owner: amiasea
           repositories: winget-pkgs
-          
+
       - name: Commit manifests to amiasea/winget-pkgs
         id: commit-manifests
         uses: actions/github-script@v7
