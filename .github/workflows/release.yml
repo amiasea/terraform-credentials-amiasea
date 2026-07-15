@@ -219,17 +219,7 @@ jobs:
             -InstallerUrl "$env:INSTALLER_URL" `
             -InstallerSha256 "$env:INSTALLER_SHA"
 
-      - name: Check initial WinGet version
-        shell: pwsh
-        run: |
-          winget --info
-
-      - name: Upgrade WinGet Client Silently
-        shell: pwsh
-        run: |
-          winget upgrade winget --accept-package-agreements --accept-source-agreements --disable-interactivity
-
-      - name: Verify upgraded WinGet info
+      - name: Check WinGet version
         shell: pwsh
         run: |
           winget --info
@@ -265,25 +255,10 @@ jobs:
           name: winget-manifests
           path: manifests
 
-      - name: Check initial WinGet version
-        shell: pwsh
-        run: |
-          winget --info
-
-      - name: Upgrade WinGet Client Silently
-        shell: pwsh
-        run: |
-          winget upgrade winget --accept-package-agreements --accept-source-agreements --disable-interactivity
-
-      - name: Verify upgraded WinGet info
-        shell: pwsh
-        run: |
-          winget --info
-
-      - name: Validate manifest
-        shell: pwsh
-        run: |
-          winget validate --manifest "manifests/a/amiasea/tfcred/${{ needs.build_release.outputs.version }}"
+      # - name: Validate manifest
+      #   shell: pwsh
+      #   run: |
+      #     winget validate --manifest "manifests/a/amiasea/tfcred/${{ needs.build_release.outputs.version }}"
 
       - name: Summary
         shell: pwsh
@@ -296,7 +271,6 @@ jobs:
 
   submit_winget_pr:
     name: Submit to microsoft/winget-pkgs
-    if: false
     needs:
       - build_release
       - generate_manifests
