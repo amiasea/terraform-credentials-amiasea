@@ -23,7 +23,7 @@ New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 
 # version.yaml
 @"
-# yaml-language-server: `$schema=https://aka.ms/winget-manifest.version.schema.json
+# yaml-language-server: `$schema=https://aka.ms/winget-manifest.version.1.12.0.schema.json
 PackageIdentifier: $PackageIdentifier
 PackageVersion: $Version
 DefaultLocale: en-US
@@ -33,7 +33,7 @@ ManifestVersion: $ManifestVersion
 
 # installer.yaml
 @"
-# yaml-language-server: `$schema=https://aka.ms/winget-manifest.installer.schema.json
+# yaml-language-server: `$schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
 PackageIdentifier: $PackageIdentifier
 PackageVersion: $Version
 InstallerLocale: en-US
@@ -62,7 +62,7 @@ ManifestVersion: $ManifestVersion
 
 # locale.en-US.yaml
 @"
-# yaml-language-server: `$schema=https://aka.ms/winget-manifest.defaultLocale.schema.json
+# yaml-language-server: `$schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0.schema.json
 PackageIdentifier: $PackageIdentifier
 PackageVersion: $Version
 PackageLocale: en-US

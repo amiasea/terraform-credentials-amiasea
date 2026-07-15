@@ -302,7 +302,7 @@ jobs:
           private-key: ${{ steps.kv-fetch.outputs.amiasea-github-private-key }}
           owner: amiasea
           repositories: winget-pkgs
-
+          
       - name: Commit manifests to amiasea/winget-pkgs
         id: commit-manifests
         uses: actions/github-script@v7
@@ -389,7 +389,6 @@ jobs:
               sha: newCommit.data.sha
             });
 
-
       - name: Create PR to microsoft/winget-pkgs
         id: submit-pr
         uses: actions/github-script@v7
@@ -417,7 +416,6 @@ jobs:
               "pr_url",
               pr.data.html_url
             );
-
 
       - name: Summary
         run: |
