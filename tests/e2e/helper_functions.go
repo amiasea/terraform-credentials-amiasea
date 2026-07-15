@@ -95,7 +95,11 @@ func extractTfcredPackage() error {
 		return err
 	}
 
-	defer reader.Close()
+	defer func() {
+		if err := reader.Close(); err != nil {
+			fmt.Printf("[e2e] failed to close archive: %v\n", err)
+		}
+	}()
 
 	for _, file := range reader.File {
 		target := filepath.Join(
@@ -126,29 +130,28 @@ func extractTfcredPackage() error {
 			0o755,
 		)
 		if err != nil {
-			source.Close()
+			_ = source.Close()
 			return err
 		}
 
-		_, err = io.Copy(
+		_, copyErr := io.Copy(
 			destination,
 			source,
 		)
 
-		source.Close()
-		destination.Close()
+		sourceCloseErr := source.Close()
+		destinationCloseErr := destination.Close()
 
-		if err != nil {
-			return err
+		if copyErr != nil {
+			return copyErr
 		}
 
-		entries, err := os.ReadDir(tfInstallDir)
-		if err != nil {
-			return err
+		if sourceCloseErr != nil {
+			return sourceCloseErr
 		}
 
-		for _, entry := range entries {
-			fmt.Println("[e2e install]", entry.Name())
+		if destinationCloseErr != nil {
+			return destinationCloseErr
 		}
 	}
 
