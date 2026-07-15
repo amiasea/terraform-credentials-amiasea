@@ -35,7 +35,7 @@ func main() {
 		commands.NewStatusCmd(),
 		commands.NewCurrentCmd(),
 		commands.NewContextCmd(),
-    commands.NewCleanupCmd(),
+		commands.NewCleanupCmd(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {

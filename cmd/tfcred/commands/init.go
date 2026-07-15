@@ -8,8 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
 	"github.com/amiasea/terraform-credentials-tfcred/internal/store"
+	"github.com/spf13/cobra"
 )
 
 // NewInitCmd creates the init command.
@@ -55,7 +55,7 @@ func runInit(defaultDomain string) error {
 	// 3. Create required directories
 	dirs := []string{terraformPluginDir, tfcredProgramDir, filepath.Dir(contextsPath)}
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
@@ -93,7 +93,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(dst, data, 0755)
+	return os.WriteFile(dst, data, 0o755)
 }
 
 func upsertTerraformConfig(path string) error {
@@ -119,7 +119,7 @@ func upsertTerraformConfig(path string) error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0o644)
 }
 
 func setUserEnvironmentVariable(name, value string) error {

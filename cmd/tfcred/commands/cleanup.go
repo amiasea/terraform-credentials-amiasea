@@ -40,32 +40,28 @@ func runCleanup() error {
 	helperPath := filepath.Join(appData, "terraform.d", "plugins", "terraform-credentials-tfcred.exe")
 	tfcredDir := filepath.Join(localAppData, "tfcred")
 
-	// 1. Run purge first (clear Windows credentials)
 	fmt.Println("[tfcred] Clearing stored credentials from Windows Vault...")
 	if err := runPurge(); err != nil {
-		fmt.Printf("[tfcred] ⚠️ Purge warning: %v\n", err)
+		return fmt.Errorf("purge credentials: %w", err)
 	}
 
-	// 2. Remove helper binary
-	if err := os.Remove(helperPath); err == nil {
-		fmt.Println("[tfcred] ✅ Removed Terraform credentials helper.")
-	} else if !os.IsNotExist(err) {
-		fmt.Printf("[tfcred] ⚠️ Could not remove helper binary: %v\n", err)
+	if err := os.Remove(helperPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove Terraform credentials helper: %w", err)
 	}
 
-	// 3. Remove tfcred data directory
-	if err := os.RemoveAll(tfcredDir); err == nil {
-		fmt.Println("[tfcred] ✅ Removed tfcred data directory.")
-	} else if !os.IsNotExist(err) {
-		fmt.Printf("[tfcred] ⚠️ Could not remove tfcred directory: %v\n", err)
+	fmt.Println("[tfcred] ✅ Removed Terraform credentials helper.")
+
+	if err := os.RemoveAll(tfcredDir); err != nil {
+		return fmt.Errorf("remove tfcred data directory: %w", err)
 	}
 
-	// 4. Remove TF_CLI_CONFIG_FILE environment variable
+	fmt.Println("[tfcred] ✅ Removed tfcred data directory.")
+
 	if err := removeUserEnvVar("TF_CLI_CONFIG_FILE"); err != nil {
-		fmt.Printf("[tfcred] ⚠️ Could not remove TF_CLI_CONFIG_FILE: %v\n", err)
-	} else {
-		fmt.Println("[tfcred] ✅ Reset TF_CLI_CONFIG_FILE (Terraform will use default location).")
+		return fmt.Errorf("remove TF_CLI_CONFIG_FILE: %w", err)
 	}
+
+	fmt.Println("[tfcred] ✅ Reset TF_CLI_CONFIG_FILE (Terraform will use default location).")
 
 	return nil
 }

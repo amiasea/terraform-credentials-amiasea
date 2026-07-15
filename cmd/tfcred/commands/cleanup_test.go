@@ -8,8 +8,8 @@ func TestRemoveCredentialsHelper(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
+		contains string
 		wantErr  bool
-		contains string // optional check
 	}{
 		{
 			name:    "file does not exist",
