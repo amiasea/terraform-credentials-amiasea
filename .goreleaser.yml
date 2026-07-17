@@ -1,4 +1,5 @@
 version: 2
+
 project_name: terraform-credentials-tfcred
 
 before:
@@ -6,7 +7,9 @@ before:
     - go mod tidy
 
 builds:
-  # Main CLI tool
+  # ============================================================================
+  # User-facing CLI
+  # ============================================================================
   - id: tfcred
     main: ./cmd/tfcred
     binary: tfcred
@@ -18,9 +21,11 @@ builds:
     goarch:
       - amd64
 
-  # Terraform credentials helper (Terraform plugin)
-  - id: tfhelper
-    main: ./cmd/tfhelper
+  # ============================================================================
+  # Terraform credentials helper
+  # ============================================================================
+  - id: terraform-credentials-tfcred
+    main: ./cmd/terraform-credentials-tfcred
     binary: terraform-credentials-tfcred
     ldflags:
       - -s -w
@@ -30,17 +35,43 @@ builds:
     goarch:
       - amd64
 
+  # ============================================================================
+  # Bootstrap installer
+  # ============================================================================
+  - id: tfcred-bootstrap
+    main: ./cmd/installer
+    binary: tfcred-bootstrap
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+    goos:
+      - windows
+    goarch:
+      - amd64
+
+
 archives:
-  - id: main-archive
+  - id: release-archive
     formats:
       - zip
+
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
     files:
       - README*
       - LICENSE*
 
+      # Installer payload
+      - src: scripts/install.ps1
+        dst: install.ps1
+
+      - src: scripts/uninstall.ps1
+        dst: uninstall.ps1
+
+
 checksum:
   name_template: "checksums.txt"
+
 
 release:
   github:

@@ -1,162 +1,59 @@
 package e2e
 
 import (
-	"archive/zip"
+	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/zalando/go-keyring"
 )
 
 var (
 	dummyToken = "FAKETOKENXXXXX.atlasv1.abcdefghijklmnopqrstuvwxyzABCDE"
 
-	tfPluginDir = filepath.Join(
-		os.Getenv("APPDATA"),
-		"terraform.d",
-		"plugins",
-	)
+	localAppData = os.Getenv("LOCALAPPDATA")
 
-	tfHelperCredBinary = filepath.Join(
-		tfPluginDir,
-		"terraform-credentials-tfcred.exe",
-	)
-
-	tfInstallDir = filepath.Join(
-		repoRoot(),
-		"tests",
-		"e2e",
-		"install",
+	tfCredInstallDir = filepath.Join(
+		localAppData,
+		"Programs",
+		"amiasea",
+		"tfcred",
 	)
 
 	tfCredBinary = filepath.Join(
-		tfInstallDir,
+		tfCredInstallDir,
 		"tfcred.exe",
 	)
 
-	tfConfigFile = filepath.Join(
-		repoRoot(),
-		"tests",
-		"e2e",
-		"terraform.tfrc.json",
+	tfCredDataDir = filepath.Join(
+		localAppData,
+		"amiasea",
+		"tfcred",
 	)
 
-	tfCredContextDir = filepath.Join(
-		repoRoot(),
-		"tests",
-		"e2e",
-		"tfcred_context",
+	tfCredContextsFile = filepath.Join(
+		tfCredDataDir,
+		"tfcred_contexts.json",
+	)
+
+	terraformConfigFile = filepath.Join(
+		tfCredDataDir,
+		"terraform.tfrc",
+	)
+
+	tfHelperCredBinary = filepath.Join(
+		os.Getenv("APPDATA"),
+		"terraform.d",
+		"plugins",
+		"terraform-credentials-tfcred.exe",
 	)
 
 	workspaceDir = "workspace"
 )
-
-func repoRoot() string {
-	dir, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-
-	return filepath.Join(
-		dir,
-		"..",
-		"..",
-	)
-}
-
-func prepareE2EEnvironment() error {
-	cleanupPaths()
-
-	return extractTfcredPackage()
-}
-
-func cleanupPaths() {
-	_ = os.RemoveAll(tfInstallDir)
-	_ = os.RemoveAll(tfCredContextDir)
-	_ = os.Remove(tfHelperCredBinary)
-}
-
-func extractTfcredPackage() error {
-	archive := filepath.Join(
-		repoRoot(),
-		"dist",
-		"terraform-credentials-tfcred_windows_amd64.zip",
-	)
-
-	if err := os.MkdirAll(tfInstallDir, 0o755); err != nil {
-		return err
-	}
-
-	reader, err := zip.OpenReader(archive)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err := reader.Close(); err != nil {
-			fmt.Printf("[e2e] failed to close archive: %v\n", err)
-		}
-	}()
-
-	for _, file := range reader.File {
-		target := filepath.Join(
-			tfInstallDir,
-			file.Name,
-		)
-
-		if file.FileInfo().IsDir() {
-			if err := os.MkdirAll(target, 0o755); err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return err
-		}
-
-		source, err := file.Open()
-		if err != nil {
-			return err
-		}
-
-		destination, err := os.OpenFile(
-			target,
-			os.O_CREATE|os.O_WRONLY|os.O_TRUNC,
-			0o755,
-		)
-		if err != nil {
-			_ = source.Close()
-			return err
-		}
-
-		_, copyErr := io.Copy(
-			destination,
-			source,
-		)
-
-		sourceCloseErr := source.Close()
-		destinationCloseErr := destination.Close()
-
-		if copyErr != nil {
-			return copyErr
-		}
-
-		if sourceCloseErr != nil {
-			return sourceCloseErr
-		}
-
-		if destinationCloseErr != nil {
-			return destinationCloseErr
-		}
-	}
-
-	return nil
-}
 
 func runTfcred(
 	t *testing.T,
@@ -169,7 +66,41 @@ func runTfcred(
 		args...,
 	)
 
-	cmd.Dir = workspaceDir
+	output, err := cmd.CombinedOutput()
+
+	t.Logf(
+		"tfcred %s output:\n%s",
+		strings.Join(args, " "),
+		output,
+	)
+
+	if err != nil {
+		t.Fatalf(
+			"tfcred %v failed:\n%s\n%v",
+			args,
+			output,
+			err,
+		)
+	}
+
+	return string(output)
+}
+
+func runTfcredAt(
+	t *testing.T,
+	workspace string,
+	args ...string,
+) string {
+	t.Helper()
+
+	cmd := exec.Command(
+		tfCredBinary,
+		args...,
+	)
+
+	if workspace != "" {
+		cmd.Dir = workspace
+	}
 
 	output, err := cmd.CombinedOutput()
 
@@ -217,7 +148,8 @@ func runTerraform(
 	output, err := cmd.CombinedOutput()
 
 	t.Logf(
-		"terraform output:\n%s",
+		"terraform %s output:\n%s",
+		strings.Join(args, " "),
 		output,
 	)
 
@@ -263,18 +195,207 @@ func assertNotContains(
 	}
 }
 
+func purgeTfcredAfterTest(
+	t *testing.T,
+) {
+	t.Helper()
+
+	if t.Failed() {
+		dumpTfcredEnvironment(t)
+		dumpVaultState(t)
+	}
+
+	purgeTfcred(t)
+}
+
+func dumpTfcredEnvironment(
+	t *testing.T,
+) {
+	t.Helper()
+
+	t.Log("=== tfcred E2E Failure Environment Dump ===")
+
+	t.Logf(
+		"tfcred install directory: %s",
+		tfCredInstallDir,
+	)
+
+	t.Logf(
+		"tfcred binary: %s",
+		tfCredBinary,
+	)
+
+	t.Logf(
+		"tfcred data directory: %s",
+		tfCredDataDir,
+	)
+
+	t.Logf(
+		"context file: %s",
+		tfCredContextsFile,
+	)
+
+	t.Logf(
+		"terraform config: %s",
+		terraformConfigFile,
+	)
+
+	t.Logf(
+		"terraform helper: %s",
+		tfHelperCredBinary,
+	)
+
+	t.Logf(
+		"process TF_CLI_CONFIG_FILE: %s",
+		os.Getenv("TF_CLI_CONFIG_FILE"),
+	)
+
+	t.Logf(
+		"process TF_CONTEXT: %s",
+		os.Getenv("TF_CONTEXT"),
+	)
+
+	if contexts, err := os.ReadFile(tfCredContextsFile); err != nil {
+		t.Logf(
+			"context file read failed: %v",
+			err,
+		)
+	} else {
+		t.Logf(
+			"context file contents:\n%s",
+			contexts,
+		)
+	}
+
+	output := runTfcred(
+		t,
+		"current",
+	)
+
+	t.Logf(
+		"tfcred current:\n%s",
+		output,
+	)
+
+	output = runTfcred(
+		t,
+		"context",
+	)
+
+	t.Logf(
+		"tfcred context:\n%s",
+		output,
+	)
+
+	if config, err := os.ReadFile(terraformConfigFile); err != nil {
+		t.Logf(
+			"terraform config read failed: %v",
+			err,
+		)
+	} else {
+		t.Logf(
+			"terraform config contents:\n%s",
+			config,
+		)
+	}
+
+	t.Log("==========================================")
+}
+
 func purgeTfcred(
 	t *testing.T,
 ) {
 	t.Helper()
 
-	if _, err := os.Stat(tfCredBinary); err != nil {
-		return
-	}
-
-	_, _ = exec.Command(
+	cmd := exec.Command(
 		tfCredBinary,
 		"purge",
 		"--force",
-	).CombinedOutput()
+	)
+
+	output, err := cmd.CombinedOutput()
+
+	t.Logf(
+		"tfcred purge output:\n%s",
+		output,
+	)
+
+	if err != nil {
+		t.Fatalf(
+			"tfcred purge failed:\n%s\n%v",
+			output,
+			err,
+		)
+	}
+}
+
+func dumpVaultState(
+	t *testing.T,
+) {
+	t.Helper()
+
+	t.Log("=== tfcred Vault State Dump ===")
+
+	data, err := os.ReadFile(tfCredContextsFile)
+	if err != nil {
+		t.Logf(
+			"context file unavailable: %v",
+			err,
+		)
+		return
+	}
+
+	var contexts struct {
+		Contexts map[string]struct {
+			Org       string `json:"org"`
+			TokenType string `json:"tokenType"`
+			Domain    string `json:"domain"`
+		} `json:"contexts"`
+	}
+
+	if err := json.Unmarshal(data, &contexts); err != nil {
+		t.Logf(
+			"failed parsing context file: %v",
+			err,
+		)
+		return
+	}
+
+	for name, context := range contexts.Contexts {
+		vaultKey := fmt.Sprintf(
+			"tfcred:domain:%s:%s:%s",
+			strings.ReplaceAll(
+				context.Domain,
+				".",
+				"_",
+			),
+			context.TokenType,
+			context.Org,
+		)
+
+		token, err := keyring.Get(
+			"tfcred",
+			vaultKey,
+		)
+
+		switch {
+		case err != nil:
+			t.Logf(
+				"context=%s vault_key=%s status=missing error=%v",
+				name,
+				vaultKey,
+				err,
+			)
+
+		default:
+			t.Logf(
+				"context=%s vault_key=%s status=present token_length=%d",
+				name,
+				vaultKey,
+				len(token),
+			)
+		}
+	}
+
+	t.Log("==============================")
 }

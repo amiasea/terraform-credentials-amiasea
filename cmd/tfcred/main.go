@@ -18,7 +18,7 @@ func main() {
 	// ==============================================================================
 	rootCmd := &cobra.Command{
 		Use:     "tfcred",
-		Short:   "Terraform credential helper and context manager",
+		Short:   "Terraform token context manager",
 		Long:    `tfcred makes it easy to switch between multiple Terraform Cloud / Enterprise tokens using named contexts.`,
 		Version: version,
 	}
@@ -35,7 +35,6 @@ func main() {
 		commands.NewStatusCmd(),
 		commands.NewCurrentCmd(),
 		commands.NewContextCmd(),
-		commands.NewCleanupCmd(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {

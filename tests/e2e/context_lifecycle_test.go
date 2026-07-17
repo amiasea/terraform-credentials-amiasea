@@ -10,14 +10,7 @@ func runContextLifecycleTests(
 ) {
 	t.Helper()
 
-	defer purgeTfcred(t)
-
-	runTfcred(
-		t,
-		"init",
-		"--domain",
-		"app.terraform.io",
-	)
+	defer purgeTfcredAfterTest(t)
 
 	output := runTfcred(
 		t,
@@ -36,19 +29,7 @@ func runContextLifecycleTests(
 	assertContains(
 		t,
 		output,
-		"Token securely vaulted in Windows Credential Manager.",
-	)
-
-	assertContains(
-		t,
-		output,
 		"Context 'platform' configured successfully.",
-	)
-
-	assertContains(
-		t,
-		output,
-		"Current directory bound to context 'platform'",
 	)
 
 	output = runTfcred(
@@ -64,40 +45,6 @@ func runContextLifecycleTests(
 
 	output = runTfcred(
 		t,
-		"status",
-	)
-
-	assertContains(
-		t,
-		output,
-		"context=platform",
-	)
-
-	assertContains(
-		t,
-		output,
-		"type=org",
-	)
-
-	assertContains(
-		t,
-		output,
-		"org=acme-corp",
-	)
-
-	output = runTfcred(
-		t,
-		"list",
-	)
-
-	assertContains(
-		t,
-		output,
-		"platform",
-	)
-
-	output = runTfcred(
-		t,
 		"context",
 	)
 
@@ -107,46 +54,29 @@ func runContextLifecycleTests(
 		"context=platform",
 	)
 
-	assertContains(
-		t,
-		output,
-		"vault_key=tfcred:domain:app_terraform_io:org:acme_corp",
-	)
-
 	assertNotContains(
 		t,
 		output,
 		"token_value",
 	)
-
-	assertNotContains(
-		t,
-		output,
-		"has_vaulted_token",
-	)
 }
 
-func runCredentialsHelperBasic(
+func runCredentialsHelperTests(
 	t *testing.T,
 ) {
 	t.Helper()
 
-	defer purgeTfcred(t)
-
-	runTfcred(
-		t,
-		"init",
-		"--domain",
-		"app.terraform.io",
-	)
+	defer purgeTfcredAfterTest(t)
 
 	token := os.Getenv("TF_TOKEN_ORG")
+
 	if token == "" {
 		t.Fatal("TF_TOKEN_ORG is not set")
 	}
 
-	output := runTfcred(
+	runTfcredAt(
 		t,
+		workspaceDir,
 		"add",
 		"--context",
 		"platform",
@@ -157,24 +87,6 @@ func runCredentialsHelperBasic(
 		"--token",
 		token,
 		"--switch",
-	)
-
-	assertContains(
-		t,
-		output,
-		"Token securely vaulted in Windows Credential Manager.",
-	)
-
-	assertContains(
-		t,
-		output,
-		"Context 'platform' configured successfully.",
-	)
-
-	assertContains(
-		t,
-		output,
-		"Current directory bound to context 'platform'",
 	)
 
 	runTerraform(

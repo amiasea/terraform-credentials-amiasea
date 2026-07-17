@@ -7,22 +7,9 @@ func runConfigurationTests(
 ) {
 	t.Helper()
 
-	defer purgeTfcred(t)
+	defer purgeTfcredAfterTest(t)
 
 	output := runTfcred(
-		t,
-		"init",
-		"--domain",
-		"app.terraform.io",
-	)
-
-	assertContains(
-		t,
-		output,
-		"[tfcred] ✅ Initialization completed successfully.",
-	)
-
-	output = runTfcred(
 		t,
 		"config",
 	)

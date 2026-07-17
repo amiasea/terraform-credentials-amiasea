@@ -33,19 +33,24 @@ func SetVault(v vaultpkg.Vault) {
 }
 
 func getStoragePath() string {
-	if contextDir := os.Getenv("TF_CRED_CONTEXT_DIR"); contextDir != "" {
-		return filepath.Join(contextDir, "tfcred_contexts.json")
-	}
-
 	localAppData := os.Getenv("LOCALAPPDATA")
+
 	if localAppData == "" {
 		return "tfcred_contexts.json"
 	}
 
-	targetDir := filepath.Join(localAppData, "tfcred")
+	targetDir := filepath.Join(
+		localAppData,
+		"amiasea",
+		"tfcred",
+	)
+
 	_ = os.MkdirAll(targetDir, 0o755)
 
-	return filepath.Join(targetDir, "tfcred_contexts.json")
+	return filepath.Join(
+		targetDir,
+		"tfcred_contexts.json",
+	)
 }
 
 // BindDirectory binds a working directory to a context.
@@ -80,7 +85,6 @@ func ResolveContextByDir(
 
 // Init initializes tfcred storage.
 func Init(defaultDomain string) {
-	fmt.Println("TF_CRED_CONTEXT_DIR:", os.Getenv("TF_CRED_CONTEXT_DIR"))
 	fmt.Println("storage path:", getStoragePath())
 
 	storageFile := getStoragePath()

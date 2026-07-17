@@ -77,7 +77,7 @@ If you want to compile and install the project locally on a fresh development ma
    ```powershell
    .\scripts\install.ps1
    ```
-   *This surgically populates the local `%APPDATA%\terraform.d\plugins` folder, registers your global `tfcred` terminal execution alias, and initializes your `terraform.tfrc.json` control pointers so you can begin testing immediately.*
+   *This surgically populates the local `%APPDATA%\terraform.d\plugins` folder, registers your global `tfcred` terminal execution alias, and initializes your `terraform.tfrc` control pointers so you can begin testing immediately.*
 
 ---
 
@@ -89,13 +89,13 @@ The installer automatically:
 - Registers a Windows **App Paths** execution alias so `tfcred` can be executed without modifying `%PATH%`.
 - Creates a dedicated, highly visible Terraform CLI configuration file located at:
   ```text
-  %USERPROFILE%\terraform.tfrc.json
+  %USERPROFILE%\terraform.tfrc
   ```
 
 - Configures that file to use the `tfcred` credentials helper.
-- Sets the user-level `TF_CLI_CONFIG_FILE` environment variable to point to `terraform.tfrc.json`.
+- Sets the user-level `TF_CLI_CONFIG_FILE` environment variable to point to `terraform.tfrc`.
 
-Because Terraform always honors `TF_CLI_CONFIG_FILE` when it is set, Terraform ignores the default configuration locations (such as `terraform.rc`) as well as the legacy `credentials.tfrc.json` file. All Terraform CLI configuration is therefore centralized into the managed `terraform.tfrc.json` file.
+Because Terraform always honors `TF_CLI_CONFIG_FILE` when it is set, Terraform ignores the default configuration locations (such as `terraform.rc`) as well as the legacy `credentials.tfrc.json` file. All Terraform CLI configuration is therefore centralized into the managed `terraform.tfrc` file.
 
 ---
 
