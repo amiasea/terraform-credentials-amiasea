@@ -71,8 +71,6 @@ jobs:
           TF_TOKEN_ORG: ${{ secrets.TF_TOKEN_ORG }}
         run: |
           mage E2E
-          pwd
-          dir
           go test ./e2e/... -v -count=1
 
   build_release:
