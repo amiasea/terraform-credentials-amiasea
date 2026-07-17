@@ -131,11 +131,6 @@ func TestAddCommand_AddsOrganizationContext(t *testing.T) {
 }
 
 func TestAddCommand_DefaultDomainRequiredWhenMissing(t *testing.T) {
-	t.Setenv(
-		"TF_CRED_CONTEXT_DIR",
-		t.TempDir(),
-	)
-
 	store.SetVault(newFakeVault())
 
 	cmd := NewAddCmd()

@@ -44,14 +44,11 @@ func (v *fakeVault) Delete(key string) error {
 func setupCommandTest(t *testing.T) *fakeVault {
 	t.Helper()
 
-	t.Setenv(
-		"TF_CRED_CONTEXT_DIR",
-		t.TempDir(),
-	)
-
 	vault := newFakeVault()
 
 	store.SetVault(vault)
+
+	store.PurgeAll()
 	store.Init("app.terraform.io")
 
 	return vault
