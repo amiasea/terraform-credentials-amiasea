@@ -7,6 +7,5 @@ contexts.json
 .vscode/
 .gopath/
 # E2E test runtime state
-tests/e2e/tfcred_context/
-tests/e2e/.env
+e2e/
 install/
