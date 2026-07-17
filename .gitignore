@@ -7,5 +7,6 @@ contexts.json
 .vscode/
 .gopath/
 # E2E test runtime state
-e2e/
+e2e/.env
+e2e/workspace/.terraform
 install/
