@@ -71,6 +71,14 @@ jobs:
           TF_TOKEN_ORG: ${{ secrets.TF_TOKEN_ORG }}
         run: |
           mage E2E
+          $env:TF_CLI_CONFIG_FILE = [Environment]::GetEnvironmentVariable(
+            "TF_CLI_CONFIG_FILE",
+            "User"
+          )
+          $env:TFCRED_CREDENTIALS_HELPER_LOG = [Environment]::GetEnvironmentVariable(
+            "TFCRED_CREDENTIALS_HELPER_LOG",
+            "User"
+          )
           go test ./e2e/... -v -count=1
 
   build_release:
