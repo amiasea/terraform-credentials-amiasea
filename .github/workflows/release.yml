@@ -70,7 +70,7 @@ jobs:
         env:
           TF_TOKEN_ORG: ${{ secrets.TF_TOKEN_ORG }}
         run: |
-          mage buildE2E
+          mage E2E
           go test ./tests/e2e/... -v -count=1
 
   build_release:
